@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c0e13">
+<title>Binance Perpetual Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="app-shell">
+  <div class="table-wrap">
+    <table id="scannerTable">
+      <thead>
+        <tr>
+          <th data-sort="flag" class="flag-col">FLAG <span class="sort-icon"></span></th>
+          <th data-sort="symbol">PAIR <span class="sort-icon"></span></th>
+          <th data-sort="price">PRICE <span class="sort-icon"></span></th>
+          <th data-sort="volume">24H VOL <span class="sort-icon"></span></th>
+          <th data-sort="1d" class="candle-head"><span>1D CANDLE</span><small>DAILY CHANGE</small></th>
+          <th data-sort="distance" class="metric-head"><span>DISTANCE</span></th>
+          <th data-sort="time" class="metric-head"><span>LAST TOUCH</span></th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="7" class="loading">Loading Binance USDT perpetuals…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="status-bar">
+    <span id="statusDot" class="status-dot"></span>
+    <span id="statusText">Connecting to Binance…</span>
+    <span class="status-spacer"></span>
+    <span class="next-refresh">5M <span id="time5m">--:--</span></span>
+    <span id="lastUpdate">--</span>
+  </div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

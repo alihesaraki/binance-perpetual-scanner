@@ -1,0 +1,145 @@
+:root{
+  --bg:#0c0e13;--header:#171b22;--line:#1b2029;--text:#f1f4f8;--muted:#8795a8;
+  --green:#00e58a;--green-bg:#08251d;--green-bg-strong:#063b29;
+  --red:#ff315f;--red-bg:#2c0d19;--red-bg-strong:#3a0e1c;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px)
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overflow:hidden;overscroll-behavior:none}
+
+/* App shell fills the real visible viewport (falls back to 100vh on older
+   browsers, upgrades to dvh where supported so mobile browser chrome
+   showing/hiding doesn't clip content), and respects iPhone notch / home
+   indicator safe areas. */
+.app-shell{
+  width:100vw;width:100dvw;
+  height:100vh;height:100dvh;
+  display:flex;flex-direction:column;background:var(--bg);
+  padding-top:var(--safe-t);padding-left:var(--safe-l);padding-right:var(--safe-r)
+}
+
+.table-wrap{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  scrollbar-color:#737b87 #101319;scrollbar-width:thin}
+.table-wrap::-webkit-scrollbar{width:10px;height:10px}
+.table-wrap::-webkit-scrollbar-track{background:#101319}
+.table-wrap::-webkit-scrollbar-thumb{background:#707782;border-radius:8px;border:2px solid #101319}
+
+table{width:100%;min-width:1180px;border-collapse:separate;border-spacing:0;table-layout:fixed}
+thead{position:sticky;top:0;z-index:5}
+th{height:79px;padding:0 10px;background:var(--header);color:#a9b7c8;border-bottom:1px solid #232a34;
+  font-size:14px;font-weight:700;letter-spacing:.35px;text-align:center;vertical-align:middle;
+  white-space:nowrap;cursor:pointer;user-select:none}
+th.flag-col{width:92px}
+th:nth-of-type(2){width:250px}
+th:nth-of-type(3){width:200px}
+th:nth-of-type(4){width:190px}
+th:nth-of-type(5){width:210px}
+th:nth-of-type(6),th:nth-of-type(7){width:220px}
+.candle-head,.metric-head{padding-top:10px}
+.candle-head span,.candle-head small,.metric-head span,.metric-head small{display:block;text-align:center}
+.candle-head small,.metric-head small{margin-top:7px;color:#60758c;font-size:11px;font-weight:600;letter-spacing:.2px}
+.sort-icon{display:inline-block;width:12px;height:12px;margin-left:5px;opacity:.7;position:relative;vertical-align:middle}
+.sort-icon:before{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border-left:1px solid #6d7b8c;border-bottom:1px solid #6d7b8c;transform:rotate(-45deg)}
+th.sorted-asc .sort-icon:before{border-color:var(--green);transform:rotate(135deg);top:4px}
+th.sorted-desc .sort-icon:before{border-color:var(--green)}
+
+tbody tr{height:57px}
+td{height:57px;border-bottom:1px solid var(--line);padding:8px 10px;background:#0d0f14;
+  font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;vertical-align:middle}
+
+.flag-cell{padding:8px}
+.flag-wrap{height:100%;display:flex;align-items:center;justify-content:center}
+.flag-btn{width:34px;height:34px;border:1px solid #2a313c;border-radius:7px;background:#11151c;
+  color:#778394;font-size:22px;line-height:1;padding:0;cursor:pointer;transition:.15s;
+  display:flex;align-items:center;justify-content:center}
+.flag-btn:hover{transform:scale(1.06);border-color:#566171}
+.flag-btn.red{color:#ff3b5f;background:#2c0d19;border-color:#6a1c30}
+.flag-btn.blue{color:#39a9ff;background:#0b2035;border-color:#194b73}
+.flag-btn.green{color:#00e58a;background:#08251d;border-color:#155c45}
+
+.pair{font-weight:700;color:#f4f6f9}
+.price{font-weight:600;color:#f1f3f6;font-variant-numeric:tabular-nums}
+.volume{color:#91a2b7;font-variant-numeric:tabular-nums}
+.cell-box,.metric-box{height:39px;width:100%;border-radius:5px;display:flex;align-items:center;
+  justify-content:center;padding:0 10px;font-weight:600;font-variant-numeric:tabular-nums;text-align:center}
+.cell-box.up{background:var(--green-bg);color:#e7fff7}
+.cell-box.up.strong{background:var(--green-bg-strong)}
+.cell-box.down{background:var(--red-bg);color:#f9e9ed}
+.cell-box.down.strong{background:var(--red-bg-strong)}
+.cell-box.neutral,.metric-box.neutral{background:#11151c;color:var(--muted)}
+.metric-box{letter-spacing:.1px}
+.loading{text-align:center;color:var(--muted);padding:30px}
+
+/* Status bar: height:auto + min-height lets it grow to a second line on
+   narrow phones instead of clipping a long status message. */
+.status-bar{min-height:26px;flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;
+  padding:5px 12px calc(5px + var(--safe-b));background:#101319;color:#647489;font-size:11px;
+  border-top:1px solid #171c24}
+.status-dot{flex:0 0 auto;width:6px;height:6px;border-radius:50%;background:#f0b429}
+.status-dot.ok{background:var(--green)}
+.status-dot.error{background:var(--red)}
+#statusText{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.status-spacer{flex:1 1 auto;min-width:0}
+.next-refresh{flex:0 0 auto;color:#74859a;font-variant-numeric:tabular-nums}
+#lastUpdate{flex:0 0 auto}
+
+/* Touch devices (phones/tablets, any pointer, not just narrow screens) get
+   larger tap targets regardless of layout tier below. */
+@media(pointer:coarse){
+  .flag-btn{width:42px;height:42px;font-size:24px}
+  th{cursor:default}
+}
+
+/* Laptop / small desktop */
+@media(max-width:1300px){
+  table{min-width:1050px}
+  th:nth-of-type(2){width:210px}
+  th:nth-of-type(3){width:160px}
+  th:nth-of-type(4){width:150px}
+  th:nth-of-type(5){width:180px}
+  th:nth-of-type(6),th:nth-of-type(7){width:190px}
+}
+
+/* Tablets (iPad portrait/landscape, Android tablets) */
+@media(max-width:900px){
+  table{min-width:900px}
+  th{height:70px;font-size:13px;padding:0 8px}
+  th.flag-col{width:76px}
+  th:nth-of-type(2){width:190px}
+  th:nth-of-type(3){width:140px}
+  th:nth-of-type(4){width:130px}
+  th:nth-of-type(5){width:160px}
+  th:nth-of-type(6),th:nth-of-type(7){width:170px}
+  tbody tr,td{height:52px}
+  td{font-size:14px;padding:6px 8px}
+  .cell-box,.metric-box{height:36px}
+}
+
+/* Phones (iPhone SE up to Samsung/large phones) */
+@media(max-width:600px){
+  table{min-width:800px}
+  th{height:62px;font-size:12px;padding:0 6px}
+  th.flag-col{width:64px}
+  th:nth-of-type(2){width:160px}
+  th:nth-of-type(3){width:120px}
+  th:nth-of-type(4){width:112px}
+  th:nth-of-type(5){width:140px}
+  th:nth-of-type(6),th:nth-of-type(7){width:150px}
+  .candle-head small,.metric-head small{font-size:10px;margin-top:5px}
+  tbody tr,td{height:48px}
+  td{font-size:13px;padding:6px}
+  .cell-box,.metric-box{height:34px;padding:0 6px;font-size:13px}
+  .flag-btn{width:38px;height:38px;font-size:20px}
+  .status-bar{font-size:10px;padding:5px 8px calc(5px + var(--safe-b))}
+}
+
+/* Very narrow phones (iPhone SE / mini in portrait, small Android) */
+@media(max-width:380px){
+  table{min-width:740px}
+  th:nth-of-type(2){width:145px}
+  th:nth-of-type(6),th:nth-of-type(7){width:135px}
+}
