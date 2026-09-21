@@ -147,13 +147,8 @@ function smmaSeries(closes,len){
   return out
 }
 
-async function loadFiveMinuteData(symbol){
-  const d=await getJSON(`/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=5m&limit=${M5_LIMIT}`);
-  if(!Array.isArray(d)||d.length<SMMA_LENGTH)return null;
-  const now=Date.now();
-  const closed=d.filter(k=>Number(k[6])<=now);
+function computeSmmaFromClosed(closed){
   if(closed.length<SMMA_LENGTH)return null;
-
   const closes=closed.map(k=>Number(k[4]));
   const series=smmaSeries(closes,SMMA_LENGTH);
   const last=series.length-1;
@@ -174,6 +169,49 @@ async function loadFiveMinuteData(symbol){
   }
 }
 
+// Full-window fetch: downloads M5_LIMIT candles. Only used for the initial
+// load and as a one-off fallback for a symbol that has no cached window yet
+// (e.g. it failed every attempt during the initial load).
+async function loadFiveMinuteData(symbol){
+  const d=await getJSON(`/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=5m&limit=${M5_LIMIT}`);
+  if(!Array.isArray(d)||d.length<SMMA_LENGTH)return null;
+  const now=Date.now();
+  const closed=d.filter(k=>Number(k[6])<=now);
+  const result=computeSmmaFromClosed(closed);
+  return result?{...result,raw:closed}:null
+}
+
+// Incremental refresh: downloads only the last few candles (cheap) and
+// stitches them onto the window we already have cached in memory, instead
+// of re-downloading the full M5_LIMIT history every time. This is what cuts
+// bandwidth on every periodic refresh by roughly 100x.
+const M5_REFRESH_TAIL=12; // small safety margin in case a refresh cycle is delayed/throttled
+async function refreshOneSymbol5m(c){
+  if(!c.candles5mRaw||!c.candles5mRaw.length){
+    const m=await loadFiveMinuteData(c.symbol);
+    if(!m)return false;
+    c.candles5mRaw=m.raw;
+    c.fiveMinute={smma:m.smma,lastTouchTime:m.lastTouchTime,barsSinceTouch:m.barsSinceTouch,lastClosedOpenTime:m.lastClosedOpenTime};
+    return true
+  }
+  const d=await getJSON(`/fapi/v1/klines?symbol=${encodeURIComponent(c.symbol)}&interval=5m&limit=${M5_REFRESH_TAIL}`);
+  if(!Array.isArray(d)||!d.length)return false;
+  const now=Date.now();
+  const freshClosed=d.filter(k=>Number(k[6])<=now);
+  if(!freshClosed.length)return false;
+
+  const freshOpenTimes=new Set(freshClosed.map(k=>Number(k[0])));
+  const merged=c.candles5mRaw.filter(k=>!freshOpenTimes.has(Number(k[0]))).concat(freshClosed);
+  merged.sort((a,b)=>Number(a[0])-Number(b[0]));
+  const trimmed=merged.length>M5_LIMIT?merged.slice(merged.length-M5_LIMIT):merged;
+
+  const result=computeSmmaFromClosed(trimmed);
+  if(!result)return false;
+  c.candles5mRaw=trimmed;
+  c.fiveMinute=result;
+  return true
+}
+
 async function loadInitialM5(){
   const cs=[...state.coins.values()];
   let pending=cs.slice();
@@ -190,7 +228,10 @@ async function loadInitialM5(){
         const c=batch[x];
         try{
           const m=await loadFiveMinuteData(c.symbol);
-          if(m)c.fiveMinute=m;
+          if(m){
+            c.candles5mRaw=m.raw;
+            c.fiveMinute={smma:m.smma,lastTouchTime:m.lastTouchTime,barsSinceTouch:m.barsSinceTouch,lastClosedOpenTime:m.lastClosedOpenTime}
+          }
         }catch(e){console.warn(`5m initial attempt ${attempt}`,c.symbol,e)}
         n++;
         if(n%10===0||n===batch.length){
@@ -213,30 +254,30 @@ async function refreshM5(){
   if(state.m5RefreshInProgress)return;
   state.m5RefreshInProgress=true;
   try{
-    const cs=[...state.coins.values()];
-    let pending=cs.slice();
+    let pending=[...state.coins.values()];
 
     // Retry failed symbols during every refresh. Existing valid data is never
     // discarded when a temporary Binance request fails.
     for(let attempt=1;attempt<=3 && pending.length;attempt++){
       let p=0;
       const batch=pending.slice();
+      const failed=[];
 
       async function worker(){
         while(true){
           const x=p++;if(x>=batch.length)return;
           const c=batch[x];
           try{
-            const m=await loadFiveMinuteData(c.symbol);
-            if(m)c.fiveMinute=m;
-          }catch(e){console.warn(`5m refresh attempt ${attempt}`,c.symbol,e)}
+            const ok=await refreshOneSymbol5m(c);
+            if(!ok)failed.push(c)
+          }catch(e){console.warn(`5m refresh attempt ${attempt}`,c.symbol,e);failed.push(c)}
         }
       }
 
       await Promise.all(Array.from(
         {length:Math.min(INITIAL_CONCURRENCY,batch.length)},worker
       ));
-      pending=batch.filter(c=>!c.fiveMinute);
+      pending=failed;
 
       if(pending.length) await sleep(1000*attempt);
     }
@@ -410,7 +451,8 @@ async function init(){
         volume:Number(t.quoteVolume),
         candles:{'1d':null},
         percent:{'1d':null},
-        fiveMinute:null
+        fiveMinute:null,
+        candles5mRaw:null
       })
     }
 
